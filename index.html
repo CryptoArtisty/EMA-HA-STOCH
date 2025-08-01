@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Heikin Ashi + Stochastic + EMA Trading System</title>
+  <script src="https://unpkg.com/lightweight-charts@4.0.0/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 10px;
+      font-family: Arial;
+      font-size: 14px;
+    }
+    #chart-container {
+      width: 100%;
+      height: 50vh;
+      min-height: 300px;
+      position: relative;
+    }
+    #stochastic-container {
+      width: 100%;
+      height: 20vh;
+      min-height: 150px;
+    }
+    #timeframe-selector {
+      margin: 10px 0;
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+    #indicator-controls {
+      margin: 10px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    #setup-checklist {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background: #f9f9f9;
+      font-size: 0.9em;
+    }
+    #alerts-container {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background: #f9f9f9;
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 0.9em;
+    }
+    .alert {
+      padding: 5px;
+      margin: 3px 0;
+      border-radius: 3px;
+    }
+    .alert.bullish {
+      background: rgba(0, 200, 5, 0.1);
+      border-left: 3px solid #00C805;
+    }
+    .alert.bearish {
+      background: rgba(200, 0, 0, 0.1);
+      border-left: 3px solid #C80000;
+    }
+    .alert.info {
+      background: rgba(0, 0, 255, 0.1);
+      border-left: 3px solid #0000FF;
+    }
+    .control-group {
+      border: 1px solid #ddd;
+      padding: 5px;
+      border-radius: 5px;
+      background: #f9f9f9;
+      font-size: 0.9em;
+    }
+    .timeframe-btn, .toggle-btn, #restore-chart-btn {
+      padding: 5px 10px;
+      cursor: pointer;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 3px;
+      font-size: 0.9em;
+      white-space: nowrap;
+    }
+    .timeframe-btn.active, .toggle-btn.active {
+      background: #ff9800;
+      font-weight: bold;
+      border-color: #e68a00;
+    }
+    .stochastic-option {
+      display: inline-block;
+      margin-right: 10px;
+      white-space: nowrap;
+    }
+    .stochastic-legend {
+      position: absolute;
+      right: 20px;
+      top: 10px;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 5px;
+      border-radius: 3px;
+      font-size: 12px;
+      border: 1px solid #eee;
+      z-index: 100;
+    }
+    .stochastic-legend-item {
+      display: flex;
+      align-items: center;
+      margin: 2px 0;
+    }
+    .stochastic-legend-color {
+      width: 12px;
+      height: 12px;
+      margin-right: 5px;
+      display: inline-block;
+    }
+    #restore-chart-btn {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.9);
+    }
+    .checklist-item {
+      margin: 5px 0;
+      display: flex;
+      align-items: center;
+    }
+    .checklist-item input {
+      margin-right: 8px;
+    }
+    .checklist-item.checked {
+      color: #00C805;
+    }
+    .setup-title {
+      font-weight: bold;
+      margin: 10px 0 5px 0;
+      padding-bottom: 3px;
+      border-bottom: 1px solid #eee;
+    }
+    #toggle-k-lines-btn {
+      margin-left: 10px;
+    }
+    .heikin-ashi-setup {
+      background: rgba(76, 175, 80, 0.1);
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+    .scalping-setup {
+      background: rgba(255, 165, 0, 0.1);
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+    #crypto-selector {
+      margin: 10px 0;
+      padding: 5px 10px;
+      border-radius: 3px;
+      border: 1px solid #ddd;
+      font-size: 0.9em;
+    }
+    .long-setup {
+      background: rgba(0, 200, 5, 0.1);
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+    .short-setup {
+      background: rgba(200, 0, 0, 0.1);
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 5px;
+        font-size: 12px;
+      }
+      #timeframe-selector {
+        gap: 3px;
+      }
+      #indicator-controls {
+        gap: 5px;
+      }
+      .control-group {
+        padding: 3px;
+      }
+      .timeframe-btn, .toggle-btn, #restore-chart-btn {
+        padding: 3px 6px;
+        font-size: 0.8em;
+      }
+      .stochastic-option {
+        margin-right: 5px;
+        font-size: 0.8em;
+      }
+      #setup-checklist, #alerts-container {
+        padding: 5px;
+        font-size: 0.8em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>Heikin Ashi + Stochastic + EMA Trading System</h2>
+  
+  <div>
+    <select id="crypto-selector">
+      <option value="BTCUSDT">Bitcoin (BTC/USDT)</option>
+      <option value="ETHUSDT">Ethereum (ETH/USDT)</option>
+      <option value="SOLUSDT">Solana (SOL/USDT)</option>
+      <option value="BNBUSDT">Binance Coin (BNB/USDT)</option>
+      <option value="ADAUSDT">Cardano (ADA/USDT)</option>
+      <option value="XRPUSDT">XRP (XRP/USDT)</option>
+      <option value="LINKUSDT">Chainlink (LINK/USDT)</option>
+      <option value="UNIUSDT">Uniswap (UNI/USDT)</option>
+    </select>
+  </div>
+  
+  <div id="timeframe-selector">
+    <button class="timeframe-btn" data-tf="1d">Daily</button>
+    <button class="timeframe-btn" data-tf="4h">4H</button>
+    <button class="timeframe-btn active" data-tf="1h">1H</button>
+    <button class="timeframe-btn" data-tf="15m">15M</button>
+    <button class="timeframe-btn" data-tf="5m">5M</button>
+    <button class="timeframe-btn" data-tf="1m">1M</button>
+  </div>
+  
+  <div id="indicator-controls">
+    <div class="control-group">
+      <strong>Stochastic:</strong>
+      <div class="stochastic-option">
+        <input type="checkbox" id="stoch-fast-9-3" checked> <label for="stoch-fast-9-3">Fast (9,3)</label>
+      </div>
+      <div class="stochastic-option">
+        <input type="checkbox" id="stoch-fast-14-3" checked> <label for="stoch-fast-14-3">Medium (14,3)</label>
+      </div>
+      <div class="stochastic-option">
+        <input type="checkbox" id="stoch-fast-40-4" checked> <label for="stoch-fast-40-4">Slow (40,4)</label>
+      </div>
+    </div>
+    
+    <div class="control-group">
+      <strong>EMA:</strong>
+      <button class="toggle-btn active" data-ema="20">20 EMA</button>
+      <button class="toggle-btn" data-ema="50">50 EMA</button>
+      <button class="toggle-btn" data-ema="100">100 EMA</button>
+    </div>
+    
+    <div class="control-group">
+      <strong>Chart Type:</strong>
+      <button class="toggle-btn" id="toggle-heikin-ashi">Heikin Ashi</button>
+      <button class="toggle-btn active" id="toggle-candles">Regular Candles</button>
+    </div>
+  </div>
+  
+  <div id="chart-container">
+    <button id="restore-chart-btn">Restore Chart</button>
+  </div>
+  <div id="stochastic-container"></div>
+  <div id="stochastic-legend" class="stochastic-legend"></div>
+
+  <div id="setup-checklist">
+    <div class="long-setup">
+      <div class="setup-title">Heikin Ashi Trend Continuation (Long)</div>
+      <div class="checklist-item" id="ha-trend-long-condition-1">
+        <input type="checkbox" disabled> Heikin Ashi candles are green (uptrend)
+      </div>
+      <div class="checklist-item" id="ha-trend-long-condition-2">
+        <input type="checkbox" disabled> Price is above 20 EMA
+      </div>
+      <div class="checklist-item" id="ha-trend-long-condition-3">
+        <input type="checkbox" disabled> Fast stochastic (9,3) pulls back to 20
+      </div>
+      <div class="checklist-item" id="ha-trend-long-condition-4">
+        <input type="checkbox" disabled> No lower wicks
+      </div>
+    </div>
+    
+    <div class="short-setup">
+      <div class="setup-title">Heikin Ashi Trend Continuation (Short)</div>
+      <div class="checklist-item" id="ha-trend-short-condition-1">
+        <input type="checkbox" disabled> Heikin Ashi candles are red (downtrend)
+      </div>
+      <div class="checklist-item" id="ha-trend-short-condition-2">
+        <input type="checkbox" disabled> Price is below 20 EMA
+      </div>
+      <div class="checklist-item" id="ha-trend-short-condition-3">
+        <input type="checkbox" disabled> Fast stochastic (9,3) rises to 80
+      </div>
+      <div class="checklist-item" id="ha-trend-short-condition-4">
+        <input type="checkbox" disabled> No upper wicks
+      </div>
+    </div>
+    
+    <div class="long-setup">
+      <div class="setup-title">Heikin Ashi Reversal (Long)</div>
+      <div class="checklist-item" id="ha-reversal-long-condition-1">
+        <input type="checkbox" disabled> Heikin Ashi candle changes from red to green
+      </div>
+      <div class="checklist-item" id="ha-reversal-long-condition-2">
+        <input type="checkbox" disabled> Fast stochastic (9,3) is oversold (<20)
+      </div>
+      <div class="checklist-item" id="ha-reversal-long-condition-3">
+        <input type="checkbox" disabled> Price crosses above 20 EMA
+      </div>
+      <div class="checklist-item" id="ha-reversal-long-condition-4">
+        <input type="checkbox" disabled> Long lower wick appears
+      </div>
+    </div>
+    
+    <div class="short-setup">
+      <div class="setup-title">Heikin Ashi Reversal (Short)</div>
+      <div class="checklist-item" id="ha-reversal-short-condition-1">
+        <input type="checkbox" disabled> Heikin Ashi candle changes from green to red
+      </div>
+      <div class="checklist-item" id="ha-reversal-short-condition-2">
+        <input type="checkbox" disabled> Fast stochastic (9,3) is overbought (>80)
+      </div>
+      <div class="checklist-item" id="ha-reversal-short-condition-3">
+        <input type="checkbox" disabled> Price crosses below 20 EMA
+      </div>
+      <div class="checklist-item" id="ha-reversal-short-condition-4">
+        <input type="checkbox" disabled> Long upper wick appears
+      </div>
+    </div>
+    
+    <div class="long-setup">
+      <div class="setup-title">Stochastic Squeeze Breakout (Long)</div>
+      <div class="checklist-item" id="squeeze-long-condition-1">
+        <input type="checkbox" disabled> All stochastics between 30-70 for 5+ candles
+      </div>
+      <div class="checklist-item" id="squeeze-long-condition-2">
+        <input type="checkbox" disabled> Heikin Ashi candles have small bodies
+      </div>
+      <div class="checklist-item" id="squeeze-long-condition-3">
+        <input type="checkbox" disabled> Fast stochastic breaks above 70
+      </div>
+      <div class="checklist-item" id="squeeze-long-condition-4">
+        <input type="checkbox" disabled> Price confirms by breaking recent high
+      </div>
+    </div>
+    
+    <div class="short-setup">
+      <div class="setup-title">Stochastic Squeeze Breakout (Short)</div>
+      <div class="checklist-item" id="squeeze-short-condition-1">
+        <input type="checkbox" disabled> All stochastics between 30-70 for 5+ candles
+      </div>
+      <div class="checklist-item" id="squeeze-short-condition-2">
+        <input type="checkbox" disabled> Heikin Ashi candles have small bodies
+      </div>
+      <div class="checklist-item" id="squeeze-short-condition-3">
+        <input type="checkbox" disabled> Fast stochastic breaks below 30
+      </div>
+      <div class="checklist-item" id="squeeze-short-condition-4">
+        <input type="checkbox" disabled> Price confirms by breaking recent low
+      </div>
+    </div>
+  </div>
+
+  <div id="alerts-container">
+    <div class="alert info">[<span id="initial-timestamp"></span>] Chart initialized. Waiting for signals...</div>
+  </div>
+
+  <script>
+    let chart;
+    let stochasticChart;
+    let candleSeries;
+    let heikinAshiSeries;
+    let currentTimeframe = '1h';
+    let currentSymbol = 'BTCUSDT';
+    let updateInterval;
+    let isSyncingCharts = false;
+    let lastAlertTime = 0;
+    let showHeikinAshi = false;
+    let lastHeikinAshiColor = null;
+    let lastDojiTime = null;
+    let candlesAfterDoji = 0;
+    
+    // Store initial time scale state
+    let initialTimeScale = {
+      rightOffset: 0,
+      barSpacing: 6,
+      fixLeftEdge: false,
+      fixRightEdge: true,
+      lockVisibleTimeRangeOnResize: true
+    };
+    
+    // Stochastic series
+    let stochSeries = {
+      'fast-9-3-d': null,
+      'fast-14-3-d': null,
+      'fast-40-4-d': null
+    };
+    
+    // EMA series
+    let emaSeries = {
+      '20': null,
+      '50': null,
+      '100': null
+    };
+    
+    // Current candle data
+    let currentCandles = [];
+    let currentHeikinAshi = [];
+    let currentStochastics = {
+      fast: [],
+      medium: [],
+      slow: []
+    };
+    
+    // Stochastic colors and labels
+    const stochColors = {
+      'fast-9-3-d': { color: '#FF0000', label: 'Fast %D (9,3)' },
+      'fast-14-3-d': { color: '#00AA00', label: 'Medium %D (14,3)' },
+      'fast-40-4-d': { color: '#0000FF', label: 'Slow %D (40,4)' }
+    };
+
+    function initChart() {
+      const container = document.getElementById('chart-container');
+      const stochasticContainer = document.getElementById('stochastic-container');
+
+      container.innerHTML = '<button id="restore-chart-btn">Restore Chart</button>';
+      stochasticContainer.innerHTML = '';
+
+      chart = LightweightCharts.createChart(container, {
+        layout: {
+          backgroundColor: '#ffffff',
+          textColor: '#333',
+        },
+        grid: {
+          vertLines: { color: '#eee' },
+          horzLines: { color: '#eee' },
+        },
+        width: container.clientWidth,
+        height: container.clientHeight,
+        timeScale: initialTimeScale
+      });
+
+      stochasticChart = LightweightCharts.createChart(stochasticContainer, {
+        layout: {
+          backgroundColor: '#000000',
+          textColor: '#fff',
+        },
+        grid: {
+          vertLines: { color: '#333' },
+          horzLines: { color: '#333' },
+        },
+        width: stochasticContainer.clientWidth,
+        height: stochasticContainer.clientHeight,
+        rightPriceScale: {
+          scaleMargins: {
+            top: 0.2,
+            bottom: 0.2,
+          },
+        },
+        timeScale: initialTimeScale
+      });
+
+      candleSeries = chart.addCandlestickSeries();
+      heikinAshiSeries = chart.addCandlestickSeries();
+      heikinAshiSeries.applyOptions({ visible: false });
+      
+      // Initialize all stochastic series
+      Object.keys(stochSeries).forEach(key => {
+        stochSeries[key] = stochasticChart.addLineSeries({
+          color: stochColors[key].color,
+          lineWidth: 1,
+          title: '',
+          visible: true
+        });
+      });
+
+      // Horizontal reference lines
+      stochasticChart.addLineSeries({
+        color: 'rgba(255, 255, 255, 0.5)',
+        lineWidth: 1,
+        lineStyle: 2
+      }).setData([
+        { time: Math.floor(Date.now() / 1000), value: 80 },
+        { time: Math.floor(Date.now() / 1000) + 60 * 60, value: 80 },
+      ]);
+
+      stochasticChart.addLineSeries({
+        color: 'rgba(255, 255, 255, 0.5)',
+        lineWidth: 1,
+        lineStyle: 2
+      }).setData([
+        { time: Math.floor(Date.now() / 1000), value: 20 },
+        { time: Math.floor(Date.now() / 1000) + 60 * 60, value: 20 },
+      ]);
+
+      // Synchronize time scales
+      setupChartSync();
+      
+      loadData(currentTimeframe);
+      setupAutoUpdate(currentTimeframe);
+      updateStochasticLegend();
+      
+      // Set up event listeners
+      setupIndicatorControls();
+      
+      // Set up restore chart button
+      document.getElementById('restore-chart-btn').addEventListener('click', restoreChart);
+      
+      // Set initial timestamp
+      document.getElementById('initial-timestamp').textContent = new Date().toLocaleTimeString();
+      
+      // Toggle between Heikin Ashi and regular candles
+      document.getElementById('toggle-heikin-ashi').addEventListener('click', function() {
+        showHeikinAshi = true;
+        candleSeries.applyOptions({ visible: false });
+        heikinAshiSeries.applyOptions({ visible: true });
+        this.classList.add('active');
+        document.getElementById('toggle-candles').classList.remove('active');
+      });
+      
+      document.getElementById('toggle-candles').addEventListener('click', function() {
+        showHeikinAshi = false;
+        candleSeries.applyOptions({ visible: true });
+        heikinAshiSeries.applyOptions({ visible: false });
+        this.classList.add('active');
+        document.getElementById('toggle-heikin-ashi').classList.remove('active');
+      });
+    }
+    
+    function setupChartSync() {
+      chart.timeScale().subscribeVisibleLogicalRangeChange((newRange) => {
+        if (newRange && !isSyncingCharts) {
+          isSyncingCharts = true;
+          stochasticChart.timeScale().setVisibleLogicalRange(newRange);
+          isSyncingCharts = false;
+        }
+      });
+      
+      stochasticChart.timeScale().subscribeVisibleLogicalRangeChange((newRange) => {
+        if (newRange && !isSyncingCharts) {
+          isSyncingCharts = true;
+          chart.timeScale().setVisibleLogicalRange(newRange);
+          isSyncingCharts = false;
+        }
+      });
+    }
+    
+    function restoreChart() {
+      chart.timeScale().applyOptions(initialTimeScale);
+      stochasticChart.timeScale().applyOptions(initialTimeScale);
+      
+      chart.timeScale().fitContent();
+      stochasticChart.timeScale().fitContent();
+    }
+    
+    function updateStochasticLegend() {
+      const legend = document.getElementById('stochastic-legend');
+      legend.innerHTML = '';
+      
+      Object.keys(stochSeries).forEach(key => {
+        if (stochSeries[key].options().visible) {
+          const item = document.createElement('div');
+          item.className = 'stochastic-legend-item';
+          item.innerHTML = `
+            <span class="stochastic-legend-color" style="background:${stochColors[key].color}"></span>
+            <span>${stochColors[key].label}</span>
+          `;
+          legend.appendChild(item);
+        }
+      });
+    }
+
+    function calculateHeikinAshi(candles) {
+      const haCandles = [];
+      
+      for (let i = 0; i < candles.length; i++) {
+        const current = candles[i];
+        let haClose, haOpen, haHigh, haLow;
+        
+        if (i === 0) {
+          haClose = (current.open + current.high + current.low + current.close) / 4;
+          haOpen = (current.open + current.close) / 2;
+        } else {
+          const prev = haCandles[i - 1];
+          haClose = (current.open + current.high + current.low + current.close) / 4;
+          haOpen = (prev.open + prev.close) / 2;
+        }
+        
+        haHigh = Math.max(current.high, haOpen, haClose);
+        haLow = Math.min(current.low, haOpen, haClose);
+        
+        haCandles.push({
+          time: current.time,
+          open: haOpen,
+          high: haHigh,
+          low: haLow,
+          close: haClose
+        });
+      }
+      
+      return haCandles;
+    }
+
+    function calculateStochastic(candles, kPeriod = 14, dPeriod = 3, smoothK = 1) {
+      const result = [];
+      const kValues = [];
+      const smoothedKValues = [];
+
+      for (let i = 0; i < candles.length; i++) {
+        if (i < kPeriod - 1) {
+          result.push({ time: candles[i].time, k: null, d: null });
+          continue;
+        }
+
+        let low = Infinity;
+        let high = -Infinity;
+
+        for (let j = i - kPeriod + 1; j <= i; j++) {
+          low = Math.min(low, candles[j].low);
+          high = Math.max(high, candles[j].high);
+        }
+
+        const currentClose = candles[i].close;
+        const k = ((currentClose - low) / (high - low)) * 100;
+        kValues.push(k);
+        
+        let smoothedK = k;
+        if (smoothK > 1) {
+          if (kValues.length >= smoothK) {
+            const kSlice = kValues.slice(-smoothK);
+            smoothedK = kSlice.reduce((sum, val) => sum + val, 0) / smoothK;
+          } else {
+            smoothedK = null;
+          }
+        }
+        
+        smoothedKValues.push(smoothedK);
+
+        let d = null;
+        if (smoothedKValues.length >= dPeriod) {
+          const dSlice = smoothedKValues.slice(-dPeriod);
+          d = dSlice.reduce((sum, val) => sum + val, 0) / dPeriod;
+        }
+
+        result.push({
+          time: candles[i].time,
+          k: smoothedK,
+          d: d,
+        });
+      }
+
+      return result;
+    }
+    
+    function calculateEMA(data, period, priceKey = 'close') {
+      if (data.length < period) return [];
+      
+      const k = 2 / (period + 1);
+      const ema = [];
+      
+      // Calculate SMA for first period values
+      let sum = 0;
+      for (let i = 0; i < period; i++) {
+        sum += data[i][priceKey];
+        ema.push({ time: data[i].time, value: null });
+      }
+      
+      ema[period-1] = { time: data[period-1].time, value: sum / period };
+      
+      // Calculate EMA for remaining values
+      for (let i = period; i < data.length; i++) {
+        const value = data[i][priceKey] * k + ema[i-1].value * (1 - k);
+        ema.push({ time: data[i].time, value: value });
+      }
+      
+      return ema;
+    }
+    
+    function addAlert(message, type) {
+      const now = Date.now();
+      if (now - lastAlertTime < 300000 && type !== 'info') return;
+      
+      lastAlertTime = now;
+      
+      const alertsContainer = document.getElementById('alerts-container');
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert ${type}`;
+      
+      const dateStr = new Date().toLocaleTimeString();
+      alertDiv.textContent = `[${dateStr}] ${message}`;
+      
+      alertsContainer.insertBefore(alertDiv, alertsContainer.firstChild);
+      
+      while (alertsContainer.children.length > 20) {
+        alertsContainer.removeChild(alertsContainer.lastChild);
+      }
+      
+      // Browser alert for important signals
+      if (type !== 'info') {
+        alert(`${type.toUpperCase()} ALERT: ${message}`);
+      }
+    }
+    
+    function checkHeikinAshiColorChange() {
+      if (currentHeikinAshi.length < 2) return;
+      
+      const latestHA = currentHeikinAshi[currentHeikinAshi.length - 1];
+      const prevHA = currentHeikinAshi[currentHeikinAshi.length - 2];
+      
+      const currentColor = latestHA.close > latestHA.open ? 'green' : 'red';
+      
+      // Check if color changed
+      if (lastHeikinAshiColor && lastHeikinAshiColor !== currentColor) {
+        addAlert(`HEIKIN ASHI COLOR CHANGE: Changed from ${lastHeikinAshiColor} to ${currentColor}`, currentColor === 'green' ? 'bullish' : 'bearish');
+        
+        // Check position relative to EMAs
+        const ema20 = emaSeries['20'] ? emaSeries['20'].dataByIndex(currentHeikinAshi.length - 1, -1).value : null;
+        const ema50 = emaSeries['50'] ? emaSeries['50'].dataByIndex(currentHeikinAshi.length - 1, -1).value : null;
+        const ema100 = emaSeries['100'] ? emaSeries['100'].dataByIndex(currentHeikinAshi.length - 1, -1).value : null;
+        
+        if (ema20 && ema50 && ema100) {
+          if (latestHA.close > ema20 && latestHA.close > ema50 && latestHA.close > ema100) {
+            addAlert("PRICE ABOVE ALL EMAs (20, 50, 100) - STRONG BULLISH", "bullish");
+          } else if (latestHA.close < ema20 && latestHA.close < ema50 && latestHA.close < ema100) {
+            addAlert("PRICE BELOW ALL EMAs (20, 50, 100) - STRONG BEARISH", "bearish");
+          } else if (latestHA.close > ema20 && latestHA.close > ema50) {
+            addAlert("PRICE ABOVE 20 & 50 EMAs - BULLISH", "bullish");
+          } else if (latestHA.close < ema20 && latestHA.close < ema50) {
+            addAlert("PRICE BELOW 20 & 50 EMAs - BEARISH", "bearish");
+          }
+        }
+      }
+      
+      lastHeikinAshiColor = currentColor;
+      
+      // Check for doji candle
+      const bodySize = Math.abs(latestHA.close - latestHA.open);
+      const range = latestHA.high - latestHA.low;
+      const isDoji = bodySize < range * 0.1;
+      
+      if (isDoji) {
+        addAlert("DOJI CANDLE DETECTED ON HEIKIN ASHI CHART - POTENTIAL REVERSAL", "info");
+        lastDojiTime = latestHA.time;
+        candlesAfterDoji = 0;
+      }
+      
+      // Check for candles after doji
+      if (lastDojiTime && latestHA.time > lastDojiTime) {
+        candlesAfterDoji++;
+        if (candlesAfterDoji === 2) {
+          addAlert("TWO CANDLES CLOSED AFTER DOJI - WATCH FOR CONFIRMATION", "info");
+        }
+      }
+    }
+    
+    function checkHeikinAshiTrendContinuation() {
+      if (currentHeikinAshi.length < 3 || currentStochastics.fast.length < 3) return;
+      
+      const latestHA = currentHeikinAshi[currentHeikinAshi.length - 1];
+      const prevHA = currentHeikinAshi[currentHeikinAshi.length - 2];
+      const latestFast = currentStochastics.fast[currentStochastics.fast.length - 1];
+      const ema20 = emaSeries['20'] ? emaSeries['20'].dataByIndex(currentHeikinAshi.length - 1, -1).value : null;
+      
+      // Reset conditions
+      document.querySelectorAll('#ha-trend-long-condition-1 input, #ha-trend-long-condition-2 input, #ha-trend-long-condition-3 input, #ha-trend-long-condition-4 input').forEach(cb => {
+        cb.checked = false;
+        cb.parentElement.classList.remove('checked');
+      });
+      
+      document.querySelectorAll('#ha-trend-short-condition-1 input, #ha-trend-short-condition-2 input, #ha-trend-short-condition-3 input, #ha-trend-short-condition-4 input').forEach(cb => {
+        cb.checked = false;
+        cb.parentElement.classList.remove('checked');
+      });
+      
+      // Check for bullish trend continuation
+      if (latestHA.close > latestHA.open) {
+        document.getElementById('ha-trend-long-condition-1').querySelector('input').checked = true;
+        document.getElementById('ha-trend-long-condition-1').classList.add('checked');
+        
+        if (ema20 && latestHA.close > ema20) {
+          document.getElementById('ha-trend-long-condition-2').querySelector('input').checked = true;
+          document.getElementById('ha-trend-long-condition-2').classList.add('checked');
+          
+          if (latestFast.d && latestFast.d < 30) {
+            document.getElementById('ha-trend-long-condition-3').querySelector('input').checked = true;
+            document.getElementById('ha-trend-long-condition-3').classList.add('checked');
+            
+            if (Math.abs(latestHA.low - latestHA.open) < 0.000001) { // No lower wick
+              document.getElementById('ha-trend-long-condition-4').querySelector('input').checked = true;
+              document.getElementById('ha-trend-long-condition-4').classList.add('checked');
+              
+              addAlert("HEIKIN ASHI TREND CONTINUATION: Bullish setup confirmed", "bullish");
+            }
+          }
+        }
+      }
+      
+      // Check for bearish trend continuation
+      if (latestHA.close < latestHA.open) {
+        document.getElementById('ha-trend-short-condition-1').querySelector('input').checked = true;
+        document.getElementById('ha-trend-short-condition-1').classList.add('checked');
+        
+        if (ema20 && latestHA.close < ema20) {
+          document.getElementById('ha-trend-short-condition-2').querySelector('input').checked = true;
+          document.getElementById('ha-trend-short-condition-2').classList.add('checked');
+          
+          if (latestFast.d && latestFast.d > 70) {
+            document.getElementById('ha-trend-short-condition-3').querySelector('input').checked = true;
+            document.getElementById('ha-trend-short-condition-3').classList.add('checked');
+            
+            if (Math.abs(latestHA.high - latestHA.open) < 0.000001) { // No upper wick
+              document.getElementById('ha-trend-short-condition-4').querySelector('input').checked = true;
+              document.getElementById('ha-trend-short-condition-4').classList.add('checked');
+              
+              addAlert("HEIKIN ASHI TREND CONTINUATION: Bearish setup confirmed", "bearish");
+            }
+          }
+        }
+      }
+    }
+    
+    function checkHeikinAshiReversal() {
+      if (currentHeikinAshi.length < 3 || currentStochastics.fast.length < 3) return;
+      
+      const latestHA = currentHeikinAshi[currentHeikinAshi.length - 1];
+      const prevHA = currentHeikinAshi[currentHeikinAshi.length - 2];
+      const latestFast = currentStochastics.fast[currentStochastics.fast.length - 1];
+      const ema20 = emaSeries['20'] ? emaSeries['20'].dataByIndex(currentHeikinAshi.length - 1, -1).value : null;
+      
+      // Reset conditions
+      document.querySelectorAll('#ha-reversal-long-condition-1 input, #ha-reversal-long-condition-2 input, #ha-reversal-long-condition-3 input, #ha-reversal-long-condition-4 input').forEach(cb => {
+        cb.checked = false;
+        cb.parentElement.classList.remove('checked');
+      });
+      
+      document.querySelectorAll('#ha-reversal-short-condition-1 input, #ha-reversal-short-condition-2 input, #ha-reversal-short-condition-3 input, #ha-reversal-short-condition-4 input').forEach(cb => {
+        cb.checked = false;
+        cb.parentElement.classList.remove('checked');
+      });
+      
+      // Check for bullish reversal (red to green)
+      if (prevHA.close < prevHA.open && latestHA.close > latestHA.open) {
+        document.getElementById('ha-reversal-long-condition-1').querySelector('input').checked = true;
+        document.getElementById('ha-reversal-long-condition-1').classList.add('checked');
+        
+        if (latestFast.d && latestFast.d < 20) {
+          document.getElementById('ha-reversal-long-condition-2').querySelector('input').checked = true;
+          document.getElementById('ha-reversal-long-condition-2').classList.add('checked');
+          
+          if (ema20 && latestHA.close > ema20) {
+            document.getElementById('ha-reversal-long-condition-3').querySelector('input').checked = true;
+            document.getElementById('ha-reversal-long-condition-3').classList.add('checked');
+            
+            if (latestHA.low < latestHA.open) { // Long lower wick
+              document.getElementById('ha-reversal-long-condition-4').querySelector('input').checked = true;
+              document.getElementById('ha-reversal-long-condition-4').classList.add('checked');
+              
+              addAlert("HEIKIN ASHI REVERSAL: Bullish reversal confirmed", "bullish");
+            }
+          }
+        }
+      }
+      
+      // Check for bearish reversal (green to red)
+      if (prevHA.close > prevHA.open && latestHA.close < latestHA.open) {
+        document.getElementById('ha-reversal-short-condition-1').querySelector('input').checked = true;
+        document.getElementById('ha-reversal-short-condition-1').classList.add('checked');
+        
+        if (latestFast.d && latestFast.d > 80) {
+          document.getElementById('ha-reversal-short-condition-2').querySelector('input').checked = true;
+          document.getElementById('ha-reversal-short-condition-2').classList.add('checked');
+          
+          if (ema20 && latestHA.close < ema20) {
+            document.getElementById('ha-reversal-short-condition-3').querySelector('input').checked = true;
+            document.getElementById('ha-reversal-short-condition-3').classList.add('checked');
+            
+            if (latestHA.high > latestHA.open) { // Long upper wick
+              document.getElementById('ha-reversal-short-condition-4').querySelector('input').checked = true;
+              document.getElementById('ha-reversal-short-condition-4').classList.add('checked');
+              
+              addAlert("HEIKIN ASHI REVERSAL: Bearish reversal confirmed", "bearish");
+            }
+          }
+        }
+      }
+    }
+    
+    function checkStochasticSqueeze() {
+      if (currentStochastics.fast.length < 10 || currentHeikinAshi.length < 10) return;
+      
+      const latestFast = currentStochastics.fast[currentStochastics.fast.length - 1];
+      const latestMedium = currentStochastics.medium[currentStochastics.medium.length - 1];
+      const latestSlow = currentStochastics.slow[currentStochastics.slow.length - 1];
+      const latestHA = currentHeikinAshi[currentHeikinAshi.length - 1];
+      
+      // Reset conditions
+      document.querySelectorAll('#squeeze-long-condition-1 input, #squeeze-long-condition-2 input, #squeeze-long-condition-3 input, #squeeze-long-condition-4 input').forEach(cb => {
+        cb.checked = false;
+        cb.parentElement.classList.remove('checked');
+      });
+      
+      document.querySelectorAll('#squeeze-short-condition-1 input, #squeeze-short-condition-2 input, #squeeze-short-condition-3 input, #squeeze-short-condition-4 input').forEach(cb => {
+        cb.checked = false;
+        cb.parentElement.classList.remove('checked');
+      });
+      
+      // Check if all stochastics are between 30-70
+      const allInMiddle = 
+        latestFast.d && latestFast.d > 30 && latestFast.d < 70 &&
+        latestMedium.d && latestMedium.d > 30 && latestMedium.d < 70 &&
+        latestSlow.d && latestSlow.d > 30 && latestSlow.d < 70;
+      
+      if (allInMiddle) {
+        document.getElementById('squeeze-long-condition-1').querySelector('input').checked = true;
+        document.getElementById('squeeze-long-condition-1').classList.add('checked');
+        document.getElementById('squeeze-short-condition-1').querySelector('input').checked = true;
+        document.getElementById('squeeze-short-condition-1').classList.add('checked');
+        
+        // Check if Heikin Ashi candles have small bodies (consolidation)
+        const bodySize = Math.abs(latestHA.close - latestHA.open);
+        const range = latestHA.high - latestHA.low;
+        const isSmallBody = bodySize < range * 0.3;
+        
+        if (isSmallBody) {
+          document.getElementById('squeeze-long-condition-2').querySelector('input').checked = true;
+          document.getElementById('squeeze-long-condition-2').classList.add('checked');
+          document.getElementById('squeeze-short-condition-2').querySelector('input').checked = true;
+          document.getElementById('squeeze-short-condition-2').classList.add('checked');
+          
+          // Check for breakout
+          if (latestFast.d && latestFast.d > 70) {
+            document.getElementById('squeeze-long-condition-3').querySelector('input').checked = true;
+            document.getElementById('squeeze-long-condition-3').classList.add('checked');
+            
+            // Check price confirmation
+            const prevHigh = Math.max(...currentHeikinAshi.slice(-5).map(c => c.high));
+            const priceConfirmation = latestHA.close > prevHigh;
+            
+            if (priceConfirmation) {
+              document.getElementById('squeeze-long-condition-4').querySelector('input').checked = true;
+              document.getElementById('squeeze-long-condition-4').classList.add('checked');
+              
+              addAlert("STOCHASTIC SQUEEZE: LONG breakout confirmed", "bullish");
+            }
+          }
+          
+          if (latestFast.d && latestFast.d < 30) {
+            document.getElementById('squeeze-short-condition-3').querySelector('input').checked = true;
+            document.getElementById('squeeze-short-condition-3').classList.add('checked');
+            
+            // Check price confirmation
+            const prevLow = Math.min(...currentHeikinAshi.slice(-5).map(c => c.low));
+            const priceConfirmation = latestHA.close < prevLow;
+            
+            if (priceConfirmation) {
+              document.getElementById('squeeze-short-condition-4').querySelector('input').checked = true;
+              document.getElementById('squeeze-short-condition-4').classList.add('checked');
+              
+              addAlert("STOCHASTIC SQUEEZE: SHORT breakout confirmed", "bearish");
+            }
+          }
+        }
+      }
+    }
+    
+    function checkSetupConditions() {
+      checkHeikinAshiColorChange();
+      checkHeikinAshiTrendContinuation();
+      checkHeikinAshiReversal();
+      checkStochasticSqueeze();
+    }
+
+    function loadData(timeframe) {
+      const apiTimeframe = timeframe;
+      const limit = timeframe === '1m' || timeframe === '5m' ? 500 : 300;
+
+      fetch(`https://api.binance.com/api/v3/klines?symbol=${currentSymbol}&interval=${apiTimeframe}&limit=${limit}`)
+        .then(res => res.json())
+        .then(data => {
+          currentCandles = data.map(d => ({
+            time: d[0] / 1000,
+            open: parseFloat(d[1]),
+            high: parseFloat(d[2]),
+            low: parseFloat(d[3]),
+            close: parseFloat(d[4]),
+            volume: parseFloat(d[5])
+          }));
+
+          candleSeries.setData(currentCandles);
+          currentHeikinAshi = calculateHeikinAshi(currentCandles);
+          heikinAshiSeries.setData(currentHeikinAshi);
+          
+          // Calculate and set EMAs
+          Object.keys(emaSeries).forEach(period => {
+            const btn = document.querySelector(`.toggle-btn[data-ema="${period}"]`);
+            if (btn && btn.classList.contains('active')) {
+              if (!emaSeries[period]) {
+                emaSeries[period] = chart.addLineSeries({
+                  color: getEMAColor(period),
+                  lineWidth: 1,
+                  title: `${period} EMA`,
+                });
+              }
+              const emaData = calculateEMA(currentCandles, parseInt(period));
+              emaSeries[period].setData(emaData);
+            } else if (emaSeries[period]) {
+              chart.removeSeries(emaSeries[period]);
+              emaSeries[period] = null;
+            }
+          });
+
+          // Calculate stochastics
+          currentStochastics.fast = calculateStochastic(currentCandles, 9, 3);
+          currentStochastics.medium = calculateStochastic(currentCandles, 14, 3);
+          currentStochastics.slow = calculateStochastic(currentCandles, 40, 4);
+          
+          // Set stochastic data
+          stochSeries['fast-9-3-d'].setData(currentStochastics.fast.filter(d => d.d !== null).map(d => ({ time: d.time, value: d.d })));
+          stochSeries['fast-14-3-d'].setData(currentStochastics.medium.filter(d => d.d !== null).map(d => ({ time: d.time, value: d.d })));
+          stochSeries['fast-40-4-d'].setData(currentStochastics.slow.filter(d => d.d !== null).map(d => ({ time: d.time, value: d.d })));
+
+          updateStochasticLegend();
+          checkSetupConditions();
+        })
+        .catch(err => {
+          console.error(`Error loading data:`, err);
+        });
+    }
+    
+    function setupIndicatorControls() {
+      // Stochastic toggles
+      document.getElementById('stoch-fast-9-3').addEventListener('change', function() {
+        stochSeries['fast-9-3-d'].applyOptions({ visible: this.checked });
+        updateStochasticLegend();
+      });
+      
+      document.getElementById('stoch-fast-14-3').addEventListener('change', function() {
+        stochSeries['fast-14-3-d'].applyOptions({ visible: this.checked });
+        updateStochasticLegend();
+      });
+      
+      document.getElementById('stoch-fast-40-4').addEventListener('change', function() {
+        stochSeries['fast-40-4-d'].applyOptions({ visible: this.checked });
+        updateStochasticLegend();
+      });
+      
+      // EMA toggles
+      document.querySelectorAll('.toggle-btn[data-ema]').forEach(btn => {
+        btn.addEventListener('click', function() {
+          this.classList.toggle('active');
+          loadData(currentTimeframe);
+        });
+      });
+    }
+    
+    function getEMAColor(period) {
+      const colors = {
+        '20': '#FF6D00',
+        '50': '#2962FF',
+        '100': '#00C805'
+      };
+      return colors[period] || '#333';
+    }
+
+    function setupAutoUpdate(timeframe) {
+      if (updateInterval) clearInterval(updateInterval);
+      
+      let updateFrequency;
+      switch(timeframe) {
+        case '1m': updateFrequency = 30000; break;
+        case '5m': updateFrequency = 60000; break;
+        case '15m': updateFrequency = 300000; break;
+        case '1h': updateFrequency = 600000; break;
+        case '4h': updateFrequency = 1800000; break;
+        case '1d': updateFrequency = 3600000; break;
+        default: updateFrequency = 60000;
+      }
+      
+      updateInterval = setInterval(() => loadData(timeframe), updateFrequency);
+    }
+
+    // Event listeners
+    document.querySelectorAll('.timeframe-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentTimeframe = this.dataset.tf;
+        initChart();
+      });
+    });
+
+    document.getElementById('crypto-selector').addEventListener('change', function() {
+      currentSymbol = this.value;
+      initChart();
+    });
+
+    window.addEventListener('resize', function() {
+      if (chart) {
+        chart.applyOptions({ 
+          width: document.getElementById('chart-container').clientWidth,
+          height: document.getElementById('chart-container').clientHeight
+        });
+      }
+      if (stochasticChart) {
+        stochasticChart.applyOptions({ 
+          width: document.getElementById('stochastic-container').clientWidth,
+          height: document.getElementById('stochastic-container').clientHeight
+        });
+      }
+    });
+
+    initChart();
+  </script>
+</body>
+</html>
