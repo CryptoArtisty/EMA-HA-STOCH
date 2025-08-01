@@ -385,7 +385,9 @@
       barSpacing: 6,
       fixLeftEdge: false,
       fixRightEdge: true,
-      lockVisibleTimeRangeOnResize: true
+      lockVisibleTimeRangeOnResize: true,
+      timeVisible: true,
+      secondsVisible: false
     };
     
     // Stochastic series
@@ -418,6 +420,40 @@
       'fast-40-4-d': { color: '#0000FF', label: 'Slow %D (40,4)' }
     };
 
+    // Audio context for beeping sounds
+    let audioContext;
+    try {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+      console.error('Web Audio API not supported');
+    }
+
+    function playBeep(type) {
+      if (!audioContext) return;
+      
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.type = 'sine';
+      
+      if (type === 'bullish') {
+        oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+      } else if (type === 'bearish') {
+        oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+      } else {
+        oscillator.frequency.setValueAtTime(660, audioContext.currentTime);
+      }
+      
+      gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+      
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.3);
+    }
+
     function initChart() {
       const container = document.getElementById('chart-container');
       const stochasticContainer = document.getElementById('stochastic-container');
@@ -436,7 +472,28 @@
         },
         width: container.clientWidth,
         height: container.clientHeight,
-        timeScale: initialTimeScale
+        timeScale: initialTimeScale,
+        localization: {
+          timeFormatter: (time) => {
+            const date = new Date(time * 1000);
+            switch(currentTimeframe) {
+              case '1m':
+              case '5m':
+              case '15m':
+                return date.toLocaleTimeString();
+              case '1h':
+              case '4h':
+                return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+              case '1d':
+                return date.toLocaleDateString();
+              default:
+                return date.toLocaleString();
+            }
+          },
+          priceFormatter: (price) => {
+            return parseFloat(price).toFixed(4);
+          }
+        }
       });
 
       stochasticChart = LightweightCharts.createChart(stochasticContainer, {
@@ -456,11 +513,42 @@
             bottom: 0.2,
           },
         },
-        timeScale: initialTimeScale
+        timeScale: initialTimeScale,
+        localization: {
+          timeFormatter: (time) => {
+            const date = new Date(time * 1000);
+            switch(currentTimeframe) {
+              case '1m':
+              case '5m':
+              case '15m':
+                return date.toLocaleTimeString();
+              case '1h':
+              case '4h':
+                return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+              case '1d':
+                return date.toLocaleDateString();
+              default:
+                return date.toLocaleString();
+            }
+          }
+        }
       });
 
-      candleSeries = chart.addCandlestickSeries();
-      heikinAshiSeries = chart.addCandlestickSeries();
+      candleSeries = chart.addCandlestickSeries({
+        priceFormat: {
+          type: 'price',
+          precision: 4,
+          minMove: 0.0001
+        }
+      });
+      
+      heikinAshiSeries = chart.addCandlestickSeries({
+        priceFormat: {
+          type: 'price',
+          precision: 4,
+          minMove: 0.0001
+        }
+      });
       heikinAshiSeries.applyOptions({ visible: false });
       
       // Initialize all stochastic series
@@ -661,14 +749,15 @@
       let sum = 0;
       for (let i = 0; i < period; i++) {
         sum += data[i][priceKey];
-        ema.push({ time: data[i].time, value: null });
       }
+      const sma = sum / period;
       
-      ema[period-1] = { time: data[period-1].time, value: sum / period };
+      // First EMA value is the SMA
+      ema.push({ time: data[period-1].time, value: sma });
       
       // Calculate EMA for remaining values
       for (let i = period; i < data.length; i++) {
-        const value = data[i][priceKey] * k + ema[i-1].value * (1 - k);
+        const value = data[i][priceKey] * k + ema[ema.length-1].value * (1 - k);
         ema.push({ time: data[i].time, value: value });
       }
       
@@ -686,7 +775,8 @@
       alertDiv.className = `alert ${type}`;
       
       const dateStr = new Date().toLocaleTimeString();
-      alertDiv.textContent = `[${dateStr}] ${message}`;
+      const assetPair = currentSymbol.replace('USDT', '/USDT');
+      alertDiv.textContent = `[${dateStr}] ${message} on the ${currentTimeframe} ${assetPair} chart`;
       
       alertsContainer.insertBefore(alertDiv, alertsContainer.firstChild);
       
@@ -694,9 +784,12 @@
         alertsContainer.removeChild(alertsContainer.lastChild);
       }
       
+      // Play beep sound
+      playBeep(type);
+      
       // Browser alert for important signals
       if (type !== 'info') {
-        alert(`${type.toUpperCase()} ALERT: ${message}`);
+        alert(`${type.toUpperCase()} ALERT: ${message} on the ${currentTimeframe} ${assetPair} chart`);
       }
     }
     
